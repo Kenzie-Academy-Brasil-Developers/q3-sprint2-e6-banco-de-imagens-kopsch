@@ -10,8 +10,8 @@ def download(app):
 
     @app.get("/download-zip")
     def download_zip_files():
-        ext = request.args.get("extension")
-        compression_ratio = 6
+        ext = request.args.get("file_extension")
+        compression_ratio = request.args.get("compression_ratio")
 
         if not ext:
             return {"message": "You must specify the extension in query params"}, HTTPStatus.BAD_REQUEST
