@@ -14,6 +14,13 @@ path = os.getenv("FILES_DIRECTORY")
 limit_size = int(os.getenv("MAX_CONTENT_LENGTH"))
 extensions = os.getenv("ALLOWED_EXTENSIONS").split(";")
 
+class FileTooLargeError(Exception):
+    default_message = "File too large."
+    status_code = 413
+
+    def __init__(self, message=default_message, status_code=status_code):
+        self.message = message
+        self.status_code = status_code
 
 def verify_file(path) -> bool:
     if(os.path.isfile(path)):
@@ -50,6 +57,9 @@ def get_files_by_extension(extension) -> list:
 
 def download_files(file) -> send_from_directory:
     type = file.split(".")[1]
+    pathname = os.path.join(f"{path}/{type}", file)
+    if not(verify_file(pathname)):
+        return {"message": "file not founded"}, HTTPStatus.NOT_FOUND
 
     return send_from_directory(
         os.path.realpath(f"{path}/{type}"),
@@ -59,10 +69,12 @@ def download_files(file) -> send_from_directory:
 
 
 def download_zip(ext, compression_ratio) -> str:
+
+    
     file = f"{ext}.zip"
     path = os.path.join(FILES_DIRECTORY, ext)
     file_path = os.path.join("/tmp", file)
-
+    
     if verify_file(file_path):
         os.remove(file_path)
 
@@ -72,7 +84,7 @@ def download_zip(ext, compression_ratio) -> str:
     return send_file(file_path, as_attachment=True)
 
 
-def upload_image(file: FileStorage) -> None:
+def upload_image(file: FileStorage) -> None or dict:
     filename = file.filename
     _, ext = os.path.splitext(filename)
     ext = ext.replace(".", "")
@@ -82,3 +94,8 @@ def upload_image(file: FileStorage) -> None:
 
     path = os.path.join(FILES_DIRECTORY, ext, filename)
     file.save(path)
+    file_size = os.stat(path).st_size
+    
+    if file_size > limit_size:
+        os.remove(path)
+        raise FileTooLargeError
